@@ -2,7 +2,8 @@
  * si446x_defs.h
  *
  *  Created on: 15 июля 2016 г.
- *      Author: NASA
+ *      Author: fademike
+ *      https://github.com/fademike
  */
 
 #ifndef INC_SI446X_DEFS_H_

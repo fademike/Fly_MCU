@@ -2,7 +2,8 @@
  * MPU9250.c
  *
  *  Created on: 08 θώνÿ 2018 γ.
- *      Author: NASA
+ *      Author: fademike
+ *      GIT: https://github.com/fademike
  */
 
 #include "MPU9250.h"
@@ -37,7 +38,7 @@ int MPU_Init(void)
 {
 	  if (HAL_I2C_Mem_Read(&hi2c1, (DEVID+1), WHO_AM_I, 1, aTxBuffer, 1, 1000) != HAL_OK)return -1;
 
-	  if (aTxBuffer[0] != 0x71) return -2;
+	  if ((aTxBuffer[0] != 0x71) && (aTxBuffer[0] != 0x73)) return -2;
 
 	    //Set magnit
 	  aTxBuffer[0] = 0x00;
@@ -64,12 +65,6 @@ int MPU_Init(void)
 
     if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xD0, 1, aTxBuffer, 1, 1000) != HAL_OK)return -1;
     //if (aTxBuffer[0] != 0xD0) return -4;
-
-
-
-
-
-
 
 
 	  return 0;
@@ -158,55 +153,65 @@ int  Get_temp(void)
 
 int Get_mag(void)
 {
+	static char pos=0;
+	static int timeout = 100;
 	unsigned char sr1 = 0;
 
 
     unsigned char cTemp = 0x11;
-	if (HAL_I2C_Mem_Write(&hi2c1, (MAGID+0), AK8963_CNTL, 1, &cTemp, 1, 1000) != HAL_OK)return -1;
-
+    if (pos == 0){
+    	if (HAL_I2C_Mem_Write(&hi2c1, (MAGID+0), AK8963_CNTL, 1, &cTemp, 1, 1000) != HAL_OK)return -1;
+		pos++; timeout = 100; return 0;
+    }
 	//wiringPiI2CWriteReg8(md, AK8963_CNTL, 0x11);
-	int timeout = 1000;
-	while((sr1&0x01) == 0) {
+/*	while((sr1&0x01) == 0) {
 		HAL_Delay(1);
-		Main_Callback();
+		//Main_Callback();
 		//sr1 = wiringPiI2CReadReg8(md, AK8963_ST1);
 	    if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_ST1, 1, &sr1, 1, 1000) != HAL_OK)return -1;
 		if (timeout--<=0)return -1; }
 	//usleep(100*1000);
+*/
+    else if (pos == 1){
+    	if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_ST1, 1, &sr1, 1, 1000) != HAL_OK)return -1;
+    	if (timeout--<=0)return -1;
+    	if ((sr1&0x01) != 0){pos++;}
+    	else return 0;
+    }
+    else if (pos == 2){
+		unsigned char d[6];
 
-	unsigned char d[6];
-
-    if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_XOUT_L, 1, &d[0], 1, 1000) != HAL_OK)return -1;
-    if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_XOUT_H, 1, &d[1], 1, 1000) != HAL_OK)return -1;
-    if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_YOUT_L, 1, &d[2], 1, 1000) != HAL_OK)return -1;
-    if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_YOUT_H, 1, &d[3], 1, 1000) != HAL_OK)return -1;
-    if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_ZOUT_L, 1, &d[4], 1, 1000) != HAL_OK)return -1;
-    if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_ZOUT_H, 1, &d[5], 1, 1000) != HAL_OK)return -1;
-
-
-	short x = *(short *)&d[0];
-	short y = *(short *)&d[2];
-	short z = *(short *)&d[4];
-
-	x = x*magCorrect_ASA[0];
-	y = y*magCorrect_ASA[1];
-	z = z*magCorrect_ASA[2];
-
-	unsigned char st2;// = wiringPiI2CReadReg8(md, AK8963_ST2);
-
-    if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_ST2, 1, &st2, 1, 1000) != HAL_OK)return -1;
-	if (!(st2>>4)) return -1; // return if no 16-bit mode
-
-	//y-=150;
-	if(DEBUG) printf("MAG x=%d, y=%d, z=%d\n\r", x, y, z);
+		if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_XOUT_L, 1, &d[0], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_XOUT_H, 1, &d[1], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_YOUT_L, 1, &d[2], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_YOUT_H, 1, &d[3], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_ZOUT_L, 1, &d[4], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_ZOUT_H, 1, &d[5], 1, 1000) != HAL_OK)return -1;
 
 
+		short x = *(short *)&d[0];
+		short y = *(short *)&d[2];
+		short z = *(short *)&d[4];
 
-	Est_M.x = x + MagHardCorrect[0];
-	Est_M.y = y + MagHardCorrect[1];
-	Est_M.z = z + MagHardCorrect[2];
+		x = x*magCorrect_ASA[0];
+		y = y*magCorrect_ASA[1];
+		z = z*magCorrect_ASA[2];
 
+		unsigned char st2;// = wiringPiI2CReadReg8(md, AK8963_ST2);
 
+		if (HAL_I2C_Mem_Read(&hi2c1, (MAGID+1), AK8963_ST2, 1, &st2, 1, 1000) != HAL_OK)return -1;
+		if (!(st2>>4)) return -1; // return if no 16-bit mode
+
+		//y-=150;
+		if(DEBUG) printf("MAG x=%d, y=%d, z=%d\n\r", x, y, z);
+
+		Est_M.x = x + MagHardCorrect[0];
+		Est_M.y = y + MagHardCorrect[1];
+		Est_M.z = z + MagHardCorrect[2];
+
+		pos = 0;
+		return 0;
+    }
 	return 0;
 }
 
@@ -279,21 +284,27 @@ int BMPInit(void)
 	dig_P8 = (signed short)((c[15]<<8)+c[14]);
 	dig_P9 = (signed short)((c[17]<<8)+c[16]);
 
+	unsigned char t_sb=0, 	// Controls inactive duration
+			filter=0, 		// Controls the time constant of the IIR filter
+			spi3w=0;		// SPI interface disable
+	unsigned char cTemp = ((t_sb&0x7)<<5) | ((filter&0x7)<<2) | (spi3w&0x1);
+	if (HAL_I2C_Mem_Write(&hi2c1, (BMPID+0), 0xF4, 1, &cTemp, 1, 1000) != HAL_OK)return -1;
+
 	return 0;
 }
 
 
 int  GetBmpTemp(void)
 {
-	unsigned char sr = 0;
-	unsigned char cTemp = (0x03+(0x7<<2)+(0x7<<5));
+	unsigned char sr = 1;
+	unsigned char cTemp = (0x03+(0x7<<2)+(0x7<<5));		// normal mode
 	//wiringPiI2CWriteReg8(bd, 0xF4, (0x03+(0x7<<2)+(0x7<<5)));
 	if (HAL_I2C_Mem_Write(&hi2c1, (BMPID+0), 0xF4, 1, &cTemp, 1, 1000) != HAL_OK)return -1;
 	//usleep(1000*1000);
 	int timeout = 1000;
-	while((sr&0x01) == 0) {
+	while((sr&0x01) != 0) {	// if im_update is running
 		HAL_Delay(1);//usleep(1000);
-		Main_Callback();
+		//Main_Callback();
 		//sr = wiringPiI2CReadReg8(bd, 0xF3);
 		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xF3, 1, &sr, 1, 1000) != HAL_OK)return -1;
 		if (timeout--<=0)break; }
@@ -316,15 +327,15 @@ int  GetBmpTemp(void)
 
 int GetBmpPress(void)
 {
-	unsigned char sr = 0;
-	unsigned char cTemp = (0x03+(0x7<<2)+(0x7<<5));
+	unsigned char sr = 1;
+	unsigned char cTemp = (0x03+(0x7<<2)+(0x7<<5));		// normal mode
 	//wiringPiI2CWriteReg8(bd, 0xF4, (0x03+(0x7<<2)+(0x7<<5)));
 	if (HAL_I2C_Mem_Write(&hi2c1, (BMPID+0), 0xF4, 1, &cTemp, 1, 1000) != HAL_OK)return -1;
 	//usleep(1000*1000);
 	int timeout = 1000;
-	while((sr&0x01) == 0) {
+	while((sr&0x01) != 0) {	// if im_update is running
 		HAL_Delay(1);//usleep(1000);
-		Main_Callback();
+		//Main_Callback();
 		//sr = wiringPiI2CReadReg8(bd, 0xF3);
 		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xF3, 1, &sr, 1, 1000) != HAL_OK)return -1;
 		if (timeout--<=0)break; }
@@ -347,4 +358,57 @@ int GetBmpPress(void)
 
 
 
+int GetDataBmp_cycle(void)
+{
+	static int pos=0;
+	static int timeout = 10;
+	static int pp =0;
+	static int tt =0;
+
+	if (pos == 0){
+		unsigned char cTemp = (0x03+(0x7<<2)+(0x7<<5));			// normal mode
+		//unsigned char cTemp = (0x01+(0x7<<2)+(0x7<<5));		// forced mode
+		if (HAL_I2C_Mem_Write(&hi2c1, (BMPID+0), 0xF4, 1, &cTemp, 1, 1000) != HAL_OK)return -1;
+		timeout = 3000/250; // timeout = 3sec. pull every 500ms
+		pos++;
+	}
+	if (pos == 1){
+		unsigned char sr;
+		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xF3, 1, &sr, 1, 1000) != HAL_OK)return -1;
+		if((sr&0x01) == 1){if (timeout--<=0){pos=0; return -2;}}							//im_update is running
+		//else if((sr&(0x01<<3)) == (0x01<<3)){if (timeout--<=0){pos=0; return -2;}}		//measuring
+		else pos++;
+	}
+	if (pos == 2){
+
+		unsigned char c[3];
+		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xF9, 1, &c[0], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xF8, 1, &c[1], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xF7, 1, &c[2], 1, 1000) != HAL_OK)return -1;
+		pp = (c[0]>>4) + (c[1]<<4) + (c[2]<<12);
+		pos++;
+	}
+	if (pos == 3){
+		unsigned char c[3];
+		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xFC, 1, &c[0], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xFB, 1, &c[1], 1, 1000) != HAL_OK)return -1;
+		if (HAL_I2C_Mem_Read(&hi2c1, (BMPID+1), 0xFA, 1, &c[2], 1, 1000) != HAL_OK)return -1;
+		tt = (c[0]>>4) + (c[1]<<4) + (c[2]<<12);
+		pos++;
+	}
+	if (pos == 4){
+		BMP_press = bmp280_compensate_P_int64(pp)/256;
+		pos++;
+	}
+	if (pos == 5){
+		BMP_temp = bmp280_compensate_T_int32(tt);
+		pos=0;
+		if ((BMP_press==0) && (BMP_temp == 0)) return -2;
+	}
+
+
+
+
+	return 0;
+}
 

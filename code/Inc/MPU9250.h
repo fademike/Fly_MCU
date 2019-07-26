@@ -22,6 +22,7 @@ int Get_mag(void);
 int BMPInit(void);
 int  GetBmpTemp(void);
 int GetBmpPress(void);
+int GetDataBmp_cycle(void);
 
 
 

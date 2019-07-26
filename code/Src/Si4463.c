@@ -2,7 +2,8 @@
  * Si4463.c
  *
  *  Created on: 16 июля 2016 г.
- *      Author: NASA
+ *      Author: fademike
+ *      GIT: https://github.com/fademike
  */
 
 

@@ -4,7 +4,7 @@
   * @brief   Interrupt Service Routines.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2018 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -63,6 +63,7 @@ unsigned char PacketCRC = 0;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern TIM_HandleTypeDef htim2;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
 
@@ -223,6 +224,20 @@ void DMA1_Channel4_IRQHandler(void)
 }
 
 /**
+* @brief This function handles TIM2 global interrupt.
+*/
+void TIM2_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM2_IRQn 0 */
+
+  /* USER CODE END TIM2_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim2);
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+
+  /* USER CODE END TIM2_IRQn 1 */
+}
+
+/**
 * @brief This function handles USART1 global interrupt.
 */
 void USART1_IRQHandler(void)
@@ -232,15 +247,18 @@ void USART1_IRQHandler(void)
 	//HAL_UART_Transmit(&huart1, "xer", 3, 500);
 
 
+
 	if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE))
 	{
 
-#if 0
+
 
 			unsigned char cTemp = (uint8_t)(huart1.Instance->DR & (uint8_t)0x00FF);
 			//HAL_UART_Transmit(&huart1, &UART_rx_bufer[UART_rx0_index], 1, 100);
 			//HAL_UART_Receive
 
+			RxDataUart(cTemp);
+#if 0
 			PacketCRC ^= cTemp;
 
 			if ((position == 0) && (cTemp == '$')) {position++; PacketCRC = 0;}
